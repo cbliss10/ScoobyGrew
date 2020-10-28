@@ -154,6 +154,9 @@ class GrowRoom {
         this.LightController.Update(growroom.LightController);
         this.HumidityController.Update(growroom.HumidityController);
     }
+    GetSensors() {
+        
+    }
 }
 
 module.exports = new GrowRoom();
