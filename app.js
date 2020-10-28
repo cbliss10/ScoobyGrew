@@ -1,32 +1,21 @@
 const express = require('express');
 const growroom = require('./models/GrowRoom');
+const bodyParser = require('body-parser');
 
 const app = express();
-const growRouter = express.Router();
 const port = process.env.PORT || 3000;
-const myGrowRoom = growroom.GrowRoom;
 
-growRouter.route('/run')
-    .get((req, res) => {
-        myGrowRoom.HeatController.Run();
-        return res.send(`Starting ...`);
-    });
+const growRouter = require('./routes/grow');
+const configRouter = require('./routes/roomConfig');
 
-growRouter.route('/status')
-    .get((req, res) => {
-      return res.send(`Status: ${myGrowRoom.HeatController.status}`);
-    })
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.json());
 
-growRouter.route('/stop')
-    .get((req, res) => {
-      myGrowRoom.HeatController.Stop();
-      return res.send('Stopping...');
-    })
-
-app.use('/api', growRouter);
+app.use('/api/grow', growRouter);
+app.use('/api/config', configRouter);
 
 app.get('/', (req, res) => {
-    res.send(`Status is: ${myGrowRoom.HeatController.status}`);
+    res.send('Welcome to Scooby Grew!');
   });
 
 app.listen(port, () => {
