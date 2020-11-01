@@ -1,6 +1,7 @@
 const express = require('express');
 const growroom = require('./models/GrowRoom');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -8,6 +9,7 @@ const port = process.env.PORT || 3000;
 const growRouter = require('./routes/grow');
 const configRouter = require('./routes/roomConfig');
 
+app.use(cors());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 

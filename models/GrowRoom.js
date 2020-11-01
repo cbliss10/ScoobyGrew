@@ -1,13 +1,30 @@
 const { Console } = require('console');
 const events = require('events');
 const EventEmitter = new events.EventEmitter();
+const sensor  = require("node-dht-sensor");
+const fs = require('fs');
+let tempData = [];
+let humidityData = [];
+let timeData = [];
 
 // data logger
 EventEmitter.on('temp', (temp) => {
-    console.log(`Temp is ${temp} degrees F`);
+    console.log(`Temp is ${temp.toFixed(1)} degrees F`);
+    if(tempData.length > 60) tempData.shift();
+    tempData.push(temp);
+    if(timeData.length > 60) timeData.shift();
+    timeData.push(new Date());
+    let stream = fs.createWriteStream("logs/tempLog.csv", {flags: 'a'});
+    stream.write(`${new Date()}, ${temp.toFixed(1)}\n`);
+    stream.close();
 });
 EventEmitter.on('humidity', (humidity) => {
-    console.log(`Humidity is ${humidity}%`);
+    console.log(`Humidity is ${humidity.toFixed(1)}%`);
+    if(humidityData.length > 60) humidityData.shift();
+    humidityData.push(humidity);
+    let stream = fs.createWriteStream("logs/humidityLog.csv", {flags: 'a'});
+    stream.write(`${new Date()}, ${humidity.toFixed(1)}%\n`);
+    stream.close();
 });
 
 class HumidityController {
@@ -15,13 +32,30 @@ class HumidityController {
     }
     status = 'Stopped';
     interval = 60; // in seconds
-    target;
-    tolerance;
+    target = 82;
+    tolerance = 1;
+    currentHumidity;
     RunLoop() {
         if(this.status == 'Running') {
-            console.log('Monitoring humidity ...');
             // do work here
-            EventEmitter.emit('humidity', 50);
+            let readout = sensor.read(22, 4);
+            this.currentHumidity = readout.humidity;
+            //console.log(`Temp = ${this.currentTemp}C`)
+            if(this.state && this.state == 'on') {
+                if(this.currentHumidity >= this.target){
+                    // turn pin off
+                    this.state = 'off';
+                    console.log('Turning off humidifier');
+                }
+            } else {
+                //console.log(`Current Humidity = ${this.currentHumidity}, Target Humidity = ${this.target}, Tolerance = ${this.tolerance}`);
+                if(this.currentHumidity < this.target - this.tolerance) {
+                    // turn pin on
+                    this.state = 'on';
+                    console.log('Turning on humidifier');
+                }
+            }
+            EventEmitter.emit('humidity', this.currentHumidity);
             // log event
             setTimeout(() => this.RunLoop(), (this.interval * 1000));
         } else {
@@ -42,6 +76,9 @@ class HumidityController {
         this.interval = humidityController.interval;
         this.target = humidityController.target;
         this.tolerance = humidityController.tolerance;
+    }
+    GetData() {
+        return humidityData;
     }
 }
 
@@ -104,7 +141,9 @@ class HeatController {
         if (this.status === "Running") {
             // do work here
             // get current temp
-            this.currentTemp = 70;
+            let readout = sensor.read(22, 4);
+            this.currentTemp = (readout.temperature*9/5)+32;
+            //console.log(`Temp = ${this.currentTemp}C`)
             if(this.state && this.state == 'on') {
                 if(this.currentTemp >= this.targetTemp){
                     // turn pin off
@@ -112,7 +151,7 @@ class HeatController {
                     console.log('Turning off heater');
                 }
             } else {
-                console.log(`Current Temp = ${this.currentTemp}, Target Temp = ${this.targetTemp}, Tolerance = ${this.tolerance}`);
+                //console.log(`Current Temp = ${this.currentTemp}, Target Temp = ${this.targetTemp}, Tolerance = ${this.tolerance}`);
                 if(this.currentTemp < this.targetTemp - this.tolerance) {
                     // turn pin on
                     this.state = 'on';
@@ -138,6 +177,9 @@ class HeatController {
         this.interval = heatcontroller.interval;
         this.status = heatcontroller.status;
     }
+    GetData() {
+        return tempData;
+    }
 }
 
 class GrowRoom {
@@ -155,7 +197,14 @@ class GrowRoom {
         this.HumidityController.Update(growroom.HumidityController);
     }
     GetSensors() {
-        
+        sensor.read(22, 4, function(err, temperature, humidity) {
+            if (!err) {
+              console.log(`temp: ${(temperature * 9/5) + 32}°F, humidity: ${humidity}%`);
+            }
+          });
+    }
+    GetTimeData() {
+        return timeData;
     }
 }
 

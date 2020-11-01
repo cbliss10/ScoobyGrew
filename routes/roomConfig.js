@@ -13,4 +13,9 @@ router.route('/')
         return res.send("Success");
     });
 
+router.route('/sensors')
+    .get((req, res) => {
+        return res.json(growroom.GetSensors());
+    })
+
 module.exports = router;
